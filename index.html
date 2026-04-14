@@ -158,7 +158,6 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
 
 <div class="wrap">
 
-  <!-- Toolbar: add day -->
   <div class="toolbar no-print">
     <div class="fg">
       <label>Date / તારીખ</label>
@@ -175,14 +174,11 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
     </div>
   </div>
 
-  <!-- Day tabs -->
   <div class="tabs-wrap no-print" id="tabsWrap"></div>
 
-  <!-- Day panel -->
   <div id="dayContent"></div>
 </div>
 
-<!-- Office Settings Modal -->
 <div class="modal-bg" id="settingsModal">
   <div class="modal">
     <h3>⚙ Office Settings</h3>
@@ -211,12 +207,10 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
   </div>
 </div>
 
-<!-- Backup / Restore Modal -->
 <div class="modal-bg" id="backupModal">
   <div class="modal" style="width:min(96vw,560px)">
     <h3>🗄 Data Backup &amp; Restore</h3>
 
-    <!-- BACKUP SECTION -->
     <div style="background:#f0f4fa;border:1px solid #c5d8f5;border-radius:8px;padding:16px;margin-bottom:16px">
       <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px">📤 Backup — Save your data</div>
       <div style="font-size:12px;color:var(--ink2);margin-bottom:12px;line-height:1.6">
@@ -235,7 +229,6 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
       <div style="font-size:11px;color:var(--ink3);margin-top:8px">💡 Tip: Include the date in the filename so you can identify backups easily.</div>
     </div>
 
-    <!-- RESTORE SECTION -->
     <div style="background:#fff8f0;border:1px solid #fcd34d;border-radius:8px;padding:16px">
       <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">📥 Restore — Load from backup</div>
       <div style="font-size:12px;color:var(--ink2);margin-bottom:12px;line-height:1.6">
@@ -254,7 +247,6 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
       <div id="restoreStatus" style="font-size:12px;margin-top:8px;display:none"></div>
     </div>
 
-    <!-- LAST BACKUP INFO -->
     <div id="lastBackupInfo" style="font-size:11px;color:var(--ink3);margin-top:12px;text-align:center"></div>
 
     <div class="modal-foot">
@@ -263,7 +255,6 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:v
   </div>
 </div>
 
-<!-- Range Export Modal -->
 <div class="modal-bg" id="rangeModal">
   <div class="modal">
     <h3>📥 Export / Print — Date Range</h3>
@@ -1072,9 +1063,21 @@ function printDays(daysArr){
         inner.style.transform = 'scale(' + scale + ')';
         inner.style.width = (100 / scale) + '%';
       });
-      setTimeout(function(){ window.print(); }, 400);
+      setTimeout(function(){ 
+        // --- ELECTRON PRINT BRIDGE ---
+        if (window.process && window.process.type === 'renderer' || navigator.userAgent.toLowerCase().indexOf(' electron/') > -1) {
+          try {
+            const { ipcRenderer } = require('electron');
+            ipcRenderer.send('print-to-pdf');
+          } catch (e) {
+            window.print();
+          }
+        } else {
+          window.print(); 
+        }
+      }, 400);
     });
-  </sc' + 'ript>
+  </script>
   </body></html>`;
 
   const w=window.open('','_blank','width=1200,height=900');
