@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>રોજ મેળ — Daybook Portal v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a202c;--ink2:#4a5568;--ink3:#718096;
+  --bg:#f7f8fa;--card:#ffffff;--border:#dde1e7;--border2:#c8cdd5;
+  --blue:#1a56a0;--blue-lt:#e8f0fb;--blue-mid:#3b7dd8;
+  --green:#1a6640;--green-lt:#e6f4ed;--green-mid:#2e8b57;
+  --red:#b91c1c;--red-lt:#fef2f2;
+  --amber:#92400e;--amber-lt:#fffbeb;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,.07);
+}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px}
+
+/* ── HEADER ── */
+.hdr{background:var(--blue);color:#fff;padding:14px 28px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.hdr-icon{font-size:26px;line-height:1}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:.3px}
+.hdr p{font-size:12px;opacity:.8;margin-top:1px}
+.hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1280px;margin:0 auto;padding:20px 18px}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;font-family:inherit;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#164a8a}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#155535}
+.btn-red{background:#dc2626;color:#fff}.btn-red:hover{background:#b91c1c}
+.btn-ghost{background:#eef1f5;color:var(--ink2);border:1px solid var(--border)}.btn-ghost:hover{background:#e2e6ec}
+.btn-amber{background:#d97706;color:#fff}.btn-amber:hover{background:#b45309}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select{border:1.5px solid var(--border2);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--ink);outline:none;background:#fff;transition:border-color .15s}
+.fg input:focus,.fg select:focus{border-color:var(--blue-mid)}
+.fg-money{width:130px}
+.ml-auto{margin-left:auto}
+
+/* ── DAY TABS — monthly grouped ── */
+.tabs-wrap{display:flex;gap:0;flex-direction:column;margin-bottom:14px}
+.month-group{margin-bottom:8px}
+.month-group-header{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.month-label{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;background:var(--blue-lt);border:1px solid #c5d8f5;border-radius:12px;padding:3px 10px;cursor:pointer;user-select:none}
+.month-label:hover{background:#d4e6f8}
+.month-days{display:flex;gap:5px;flex-wrap:wrap;padding-left:4px}
+.dtab{padding:4px 11px;border-radius:14px;border:1.5px solid var(--border2);background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink2);transition:all .13s}
+.dtab:hover{border-color:var(--blue-mid);color:var(--blue)}
+.dtab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.tabs-actions{display:flex;gap:6px;margin-top:4px}
+
+/* ── DAY PANEL ── */
+.dpanel-head{background:#f0f4fa;padding:12px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.dpanel-head h2{font-size:16px;font-weight:700;color:var(--blue)}
+.bal-badges{display:flex;gap:18px;font-size:13px}
+.bal-open{color:var(--green);font-weight:700}
+.bal-close{color:var(--amber);font-weight:700}
+
+/* ── LEDGER ── */
+.ledger{display:grid;grid-template-columns:1fr 1fr;align-items:stretch}
+@media(max-width:750px){.ledger{grid-template-columns:1fr}}
+.lcol{padding:14px 16px;display:flex;flex-direction:column}
+.lcol:first-child{border-right:2px solid var(--border)}
+.lcol-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1.5px solid var(--border)}
+.lcol-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.lcol-title.cr{color:var(--green)}
+.lcol-title.dr{color:var(--red)}
+.col-lbl{display:grid;grid-template-columns:1fr 100px 90px 26px;gap:5px;margin-bottom:4px}
+.col-lbl span{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px}
+.col-lbl .r{text-align:right}
+.erow{display:grid;grid-template-columns:1fr 100px 90px 26px;gap:5px;align-items:start;margin-bottom:5px}
+.erow input{border:1.5px solid var(--border2);border-radius:5px;padding:5px 8px;font-size:13px;font-family:inherit;width:100%;color:var(--ink);outline:none;background:#fff;transition:border-color .15s}
+.erow input:focus{border-color:var(--blue-mid);background:#fafcff}
+.erow input.amt{text-align:right}
+.erow input[readonly]{background:#f5f7fa;color:var(--ink2);cursor:not-allowed}
+.erow textarea.desc-field{border:1.5px solid var(--border2);border-radius:5px;padding:5px 8px;font-size:13px;font-family:inherit;width:100%;color:var(--ink);outline:none;background:#fff;transition:border-color .15s;resize:none;overflow:hidden;min-height:32px;line-height:1.4}
+.erow textarea.desc-field:focus{border-color:var(--blue-mid);background:#fafcff}
+.lcol-entries{flex:1}
+.rbtn{width:24px;height:24px;border:none;border-radius:5px;background:#fff0f0;color:var(--red);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .13s}
+.rbtn:hover{background:#fecaca}
+.open-row{background:var(--green-lt);border:1.5px solid #a7d7b8;border-radius:6px;padding:7px 10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--green)}
+.open-row input.amt{background:transparent;border:1.5px solid #a7d7b8;border-radius:5px;text-align:right;font-weight:700;color:var(--green);width:110px;padding:4px 8px;font-size:13px;font-family:inherit;outline:none}
+.open-row input.amt:focus{border-color:var(--green-mid)}
+.open-row input.amt[readonly]{cursor:not-allowed;opacity:.9}
+.tot-row{margin-top:8px;padding-top:8px;border-top:2px solid var(--border);display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.tot-cr{color:var(--green)}
+.tot-dr{color:var(--red)}
+.close-row{margin-top:8px;padding:7px 10px;background:var(--amber-lt);border:1.5px solid #fcd34d;border-radius:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--amber)}
+.sumbar{background:var(--blue-lt);border-top:1px solid #c5d8f5;padding:10px 18px;display:flex;gap:20px;flex-wrap:wrap}
+.si{display:flex;flex-direction:column}
+.si .lbl{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px}
+.si .val{font-size:15px;font-weight:700;margin-top:1px}
+.no-days{text-align:center;padding:60px 20px;color:var(--ink3)}
+.no-days h3{font-size:18px;margin-bottom:6px;color:var(--ink2)}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:24px;width:min(96vw,520px);box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:16px;color:var(--blue)}
+.modal .fg{margin-bottom:12px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+/* ── PRINT STYLES ── */
+@media print{
+  body{background:#fff;font-size:10pt}
+  .hdr,.toolbar,.tabs-wrap,.tabs-actions,.sumbar,.no-print{display:none!important}
+  .wrap{padding:0;max-width:100%}
+  .card{box-shadow:none;border:none}
+  .dpanel-head{background:#fff;border-bottom:1px solid #999}
+  .lcol:first-child{border-right:1px solid #999}
+  .page-break{page-break-after:always}
+}
+
+/* ── RANGE MODAL ── */
+#rangeModal .fg input{width:100%}
+.range-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+/* ── OFFICE SETTINGS BAR ── */
+.settings-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 18px;background:#f0f4fa;border:1px solid #c5d8f5;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+.settings-bar .fg input,.settings-bar .fg select{min-width:180px}
+.office-info-band{background:var(--blue);color:#fff;text-align:center;padding:10px 18px;border-radius:var(--radius) var(--radius) 0 0;border-bottom:2px solid #a3c0e8}
+.office-info-band .oname{font-size:17px;font-weight:700;letter-spacing:.3px}
+.office-info-band .fyline{font-size:12px;opacity:.85;margin-top:2px}
+.side-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 0 8px;margin-bottom:6px;border-bottom:1.5px solid var(--border)}
+.side-label.cr-label{color:var(--green)}
+.side-label.dr-label{color:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-icon">📒</div>
+  <div>
+    <h1 id="hdrTitle">રોજ મેળ &nbsp;|&nbsp; Daybook Portal</h1>
+    <p id="hdrSub">Government Office Daily Financial Ledger — Data is saved locally in your browser</p>
+  </div>
+  <div class="hdr-right no-print">
+    <button class="btn btn-ghost btn-sm" onclick="openSettingsModal()">⚙ Office Settings</button>
+    <button class="btn btn-ghost btn-sm" onclick="openBackupModal()">🗄 Backup / Restore</button>
+    <button class="btn btn-ghost btn-sm" onclick="openRangeModal()">📥 Export / Print Range</button>
+    <button class="btn btn-green" onclick="exportAllExcel()">⬇ Export All Excel</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Toolbar: add day -->
+  <div class="toolbar no-print">
+    <div class="fg">
+      <label>Date / તારીખ</label>
+      <input type="date" id="newDate">
+    </div>
+    <div style="align-self:flex-end">
+      <button class="btn btn-blue" onclick="addDay()">＋ Add Day</button>
+    </div>
+    <div style="align-self:flex-end;margin-left:6px">
+      <button class="btn btn-ghost btn-sm" onclick="loadSample()">Load Sample Data</button>
+    </div>
+    <div class="ml-auto" style="align-self:flex-end;display:flex;gap:6px;align-items:center">
+      <span style="font-size:11px;color:var(--ink3)">💾 Auto-saved locally</span>
+    </div>
+  </div>
+
+  <!-- Day tabs -->
+  <div class="tabs-wrap no-print" id="tabsWrap"></div>
+
+  <!-- Day panel -->
+  <div id="dayContent"></div>
+</div>
+
+<!-- Office Settings Modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>⚙ Office Settings</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Office Name / કચેરીનું નામ</label>
+      <input type="text" id="settOfficeName" placeholder="e.g. જિલ્લા પંચાયત કચેરી, ગાંધીનગર" style="width:100%">
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Office Name (English)</label>
+      <input type="text" id="settOfficeNameEn" placeholder="e.g. District Panchayat Office, Gandhinagar" style="width:100%">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg">
+        <label>Financial Year Start</label>
+        <input type="number" id="settFYStart" min="2000" max="2100" placeholder="e.g. 2025" style="width:100%">
+      </div>
+      <div class="fg">
+        <label>Financial Year End</label>
+        <input type="number" id="settFYEnd" min="2000" max="2100" placeholder="e.g. 2026" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn btn-blue" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backup / Restore Modal -->
+<div class="modal-bg" id="backupModal">
+  <div class="modal" style="width:min(96vw,560px)">
+    <h3>🗄 Data Backup &amp; Restore</h3>
+
+    <!-- BACKUP SECTION -->
+    <div style="background:#f0f4fa;border:1px solid #c5d8f5;border-radius:8px;padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px">📤 Backup — Save your data</div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:12px;line-height:1.6">
+        Downloads a <strong>.json</strong> backup file containing all your daybook entries and office settings.
+        Save it anywhere — your Desktop, a USB drive, or Google Drive.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="fg" style="flex:1;min-width:160px">
+          <label>Backup File Name</label>
+          <input type="text" id="backupFileName" placeholder="e.g. Daybook_Backup_April2025" style="width:100%">
+        </div>
+        <div style="align-self:flex-end">
+          <button class="btn btn-blue" onclick="doBackup()">⬇ Download Backup</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:8px">💡 Tip: Include the date in the filename so you can identify backups easily.</div>
+    </div>
+
+    <!-- RESTORE SECTION -->
+    <div style="background:#fff8f0;border:1px solid #fcd34d;border-radius:8px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">📥 Restore — Load from backup</div>
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:12px;line-height:1.6">
+        Select a previously downloaded <strong>.json</strong> backup file to restore your data.
+        <span style="color:var(--red);font-weight:700">⚠ This will replace all current data.</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="fg" style="flex:1;min-width:200px">
+          <label>Select Backup File</label>
+          <input type="file" id="restoreFile" accept=".json" style="width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;background:#fff">
+        </div>
+        <div style="align-self:flex-end">
+          <button class="btn btn-amber" onclick="doRestore()">⬆ Restore Data</button>
+        </div>
+      </div>
+      <div id="restoreStatus" style="font-size:12px;margin-top:8px;display:none"></div>
+    </div>
+
+    <!-- LAST BACKUP INFO -->
+    <div id="lastBackupInfo" style="font-size:11px;color:var(--ink3);margin-top:12px;text-align:center"></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeBackupModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Range Export Modal -->
+<div class="modal-bg" id="rangeModal">
+  <div class="modal">
+    <h3>📥 Export / Print — Date Range</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><label>From Date</label><input type="date" id="rangeFrom"></div>
+      <div class="fg"><label>To Date</label><input type="date" id="rangeTo"></div>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:var(--ink3);margin-bottom:6px">Choose action:</div>
+    <div class="range-opts">
+      <button class="btn btn-blue" onclick="rangeExcelExport()">⬇ Download Excel</button>
+      <button class="btn btn-amber" onclick="rangePdfExport()">⬇ Download PDF</button>
+      <button class="btn btn-ghost" onclick="rangePrint()">🖨 Print</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeRangeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  STATE & STORAGE
+// ════════════════════════════════════════════════════
+const STORE_KEY = 'daybook_v2_data';
+const SETTINGS_KEY = 'daybook_v2_settings';
+let days = [];
+let activeIdx = 0;
+let settings = { officeName:'', officeNameEn:'', fyStart:'', fyEnd:'' };
+
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(days)); }catch(e){} }
+function saveSettingsStore(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ days = JSON.parse(raw); days.sort((a,b)=>a.date.localeCompare(b.date)); }
+  }catch(e){ days=[]; }
+  try{
+    const rs = localStorage.getItem(SETTINGS_KEY);
+    if(rs){ settings = {...settings, ...JSON.parse(rs)}; }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════════════
+//  BACKUP & RESTORE
+// ════════════════════════════════════════════════════
+const BACKUP_META_KEY = 'daybook_last_backup';
+
+function openBackupModal(){
+  // Set default backup filename with today's date
+  const today = new Date();
+  const dd = ('0'+today.getDate()).slice(-2);
+  const mm = ('0'+(today.getMonth()+1)).slice(-2);
+  const yyyy = today.getFullYear();
+  document.getElementById('backupFileName').value = `Daybook_Backup_${dd}-${mm}-${yyyy}`;
+  document.getElementById('restoreFile').value = '';
+  document.getElementById('restoreStatus').style.display = 'none';
+
+  // Show last backup info
+  const lastBackup = localStorage.getItem(BACKUP_META_KEY);
+  const info = document.getElementById('lastBackupInfo');
+  if(lastBackup){
+    info.textContent = '🕐 Last backup: ' + lastBackup;
+  } else {
+    info.textContent = '⚠ No backup has been made yet. We recommend backing up regularly.';
+    info.style.color = 'var(--red)';
+  }
+
+  document.getElementById('backupModal').classList.add('open');
+}
+
+function closeBackupModal(){
+  document.getElementById('backupModal').classList.remove('open');
+}
+
+function doBackup(){
+  // Bundle all data + settings into one JSON object
+  const backupData = {
+    version: '2',
+    exportedAt: new Date().toISOString(),
+    exportedBy: 'Daybook Portal',
+    settings: settings,
+    days: days
+  };
+
+  const json = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url  = URL.createObjectURL(blob);
+
+  let filename = (document.getElementById('backupFileName').value.trim() || 'Daybook_Backup') + '.json';
+  // Sanitise filename
+  filename = filename.replace(/[\\/:*?"<>|]/g, '_');
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Record last backup timestamp
+  const ts = new Date().toLocaleString('en-GB');
+  localStorage.setItem(BACKUP_META_KEY, ts);
+  document.getElementById('lastBackupInfo').textContent = '✅ Backup downloaded: ' + ts;
+  document.getElementById('lastBackupInfo').style.color = 'var(--green)';
+}
+
+function doRestore(){
+  const fileInput = document.getElementById('restoreFile');
+  const statusEl  = document.getElementById('restoreStatus');
+
+  if(!fileInput.files || !fileInput.files[0]){
+    statusEl.style.display = 'block';
+    statusEl.style.color   = 'var(--red)';
+    statusEl.textContent   = '⚠ Please select a backup .json file first.';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if(!file.name.endsWith('.json')){
+    statusEl.style.display = 'block';
+    statusEl.style.color   = 'var(--red)';
+    statusEl.textContent   = '⚠ Invalid file. Please select a .json backup file.';
+    return;
+  }
+
+  if(!confirm(
+    'Restore from backup?\n\n' +
+    'File: ' + file.name + '\n\n' +
+    '⚠ WARNING: All current data will be replaced with the backup data.\n' +
+    'Make sure you have a backup of current data before proceeding.\n\n' +
+    'Click OK to continue or Cancel to abort.'
+  )) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const parsed = JSON.parse(e.target.result);
+
+      // Validate structure
+      if(!parsed.days || !Array.isArray(parsed.days)){
+        throw new Error('Invalid backup file — "days" data not found.');
+      }
+
+      // Restore days
+      days = parsed.days;
+      days.sort((a,b) => a.date.localeCompare(b.date));
+
+      // Restore settings if present
+      if(parsed.settings && typeof parsed.settings === 'object'){
+        settings = {...settings, ...parsed.settings};
+        saveSettingsStore();
+        updateHeaderDisplay();
+      }
+
+      // Save restored data to localStorage
+      save();
+      activeIdx = 0;
+
+      statusEl.style.display = 'block';
+      statusEl.style.color   = 'var(--green)';
+      statusEl.textContent   = '✅ Restored successfully! ' + days.length + ' day(s) loaded from backup.';
+
+      // Update last backup info
+      const exportedAt = parsed.exportedAt
+        ? new Date(parsed.exportedAt).toLocaleString('en-GB')
+        : 'unknown date';
+      document.getElementById('lastBackupInfo').textContent =
+        '✅ Restored from backup exported on: ' + exportedAt;
+      document.getElementById('lastBackupInfo').style.color = 'var(--green)';
+
+      render();
+
+      // Auto-close modal after 2 seconds
+      setTimeout(() => closeBackupModal(), 2000);
+
+    } catch(err){
+      statusEl.style.display = 'block';
+      statusEl.style.color   = 'var(--red)';
+      statusEl.textContent   = '❌ Restore failed: ' + err.message;
+    }
+  };
+  reader.onerror = function(){
+    statusEl.style.display = 'block';
+    statusEl.style.color   = 'var(--red)';
+    statusEl.textContent   = '❌ Could not read the file. Please try again.';
+  };
+  reader.readAsText(file);
+}
+
+
+function openSettingsModal(){
+  document.getElementById('settOfficeName').value = settings.officeName||'';
+  document.getElementById('settOfficeNameEn').value = settings.officeNameEn||'';
+  document.getElementById('settFYStart').value = settings.fyStart||'';
+  document.getElementById('settFYEnd').value = settings.fyEnd||'';
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettingsModal(){ document.getElementById('settingsModal').classList.remove('open'); }
+function saveSettings(){
+  settings.officeName = document.getElementById('settOfficeName').value.trim();
+  settings.officeNameEn = document.getElementById('settOfficeNameEn').value.trim();
+  settings.fyStart = document.getElementById('settFYStart').value.trim();
+  settings.fyEnd = document.getElementById('settFYEnd').value.trim();
+  saveSettingsStore();
+  closeSettingsModal();
+  updateHeaderDisplay();
+  renderPanel();
+}
+function fyLabel(){
+  if(settings.fyStart && settings.fyEnd) return `નાણાંકીય વર્ષ ${settings.fyStart}-${settings.fyEnd}  |  Financial Year ${settings.fyStart}-${settings.fyEnd}`;
+  if(settings.fyStart) return `Financial Year ${settings.fyStart}`;
+  return '';
+}
+function officeLabel(){
+  const parts=[];
+  if(settings.officeName) parts.push(settings.officeName);
+  if(settings.officeNameEn && settings.officeNameEn!==settings.officeName) parts.push(settings.officeNameEn);
+  return parts.join('  |  ');
+}
+function updateHeaderDisplay(){
+  const name = officeLabel() || 'Daybook Portal';
+  const fy = fyLabel();
+  document.getElementById('hdrTitle').textContent = name;
+  document.getElementById('hdrSub').textContent = fy || 'Government Office Daily Financial Ledger — Data is saved locally in your browser';
+}
+
+
+function isApril1(dateStr){
+  return dateStr && dateStr.slice(5)==='04-01';
+}
+function getOpen(idx){
+  if(idx===0){
+    const d=days[0];
+    return isApril1(d.date) ? Number(d.openingBalance||0) : 0;
+  }
+  return getClose(idx-1);
+}
+function getClose(idx){
+  const d=days[idx];
+  const open=getOpen(idx);
+  const cr=d.credits.reduce((s,r)=>s+Number(r.amount||0),0);
+  const db=d.debits.reduce((s,r)=>s+Number(r.amount||0),0);
+  return open+cr-db;
+}
+function fmt(n){ return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function dateDisp(s){ const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function toJsNum(s){ return parseFloat((s||'0').toString().replace(/,/g,''))||0; }
+
+// Convert any Gujarati digits → English digits
+function toEnglishDigits(str){
+  const map={'૦':'0','૧':'1','૨':'2','૩':'3','૪':'4','૫':'5','૬':'6','૭':'7','૮':'8','૯':'9'};
+  return String(str||'').replace(/[૦-૯]/g,c=>map[c]||c);
+}
+
+// ════════════════════════════════════════════════════
+//  ADD / REMOVE DAYS
+// ════════════════════════════════════════════════════
+function addDay(){
+  const v=document.getElementById('newDate').value;
+  if(!v){alert('Please select a date.');return;}
+  if(days.find(d=>d.date===v)){alert('This date already exists!');return;}
+  days.push({date:v,openingBalance:0,credits:[{desc:'',ref:'',amount:''}],debits:[{desc:'',ref:'',amount:''}]});
+  days.sort((a,b)=>a.date.localeCompare(b.date));
+  activeIdx=days.findIndex(d=>d.date===v);
+  save(); render();
+}
+function removeDay(idx){
+  if(!confirm('Remove this day and all its entries?')) return;
+  days.splice(idx,1);
+  activeIdx=Math.max(0,Math.min(activeIdx,days.length-1));
+  save(); render();
+}
+function switchDay(idx){ activeIdx=idx; render(); }
+
+// ════════════════════════════════════════════════════
+//  ROW MUTATIONS
+// ════════════════════════════════════════════════════
+function addRow(idx,side){ days[idx][side].push({desc:'',ref:'',amount:''}); save(); render(); }
+function removeRow(idx,side,ri){
+  if(days[idx][side].length===1){ days[idx][side][0]={desc:'',ref:'',amount:''}; }
+  else days[idx][side].splice(ri,1);
+  save(); render();
+}
+function setField(idx,side,ri,field,val){
+  if(field==='amount') val=toEnglishDigits(val);
+  days[idx][side][ri][field]=val;
+  save(); refreshLive();
+}
+function setOpenBalance(idx,val){
+  days[idx].openingBalance=toJsNum(toEnglishDigits(val));
+  save(); refreshLive();
+}
+
+// ════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════
+
+function renderTabs(){
+  const wrap=document.getElementById('tabsWrap');
+  if(!days.length){ wrap.innerHTML=''; return; }
+
+  // Group days by YYYY-MM
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const groups={};
+  days.forEach((d,i)=>{
+    const key=d.date.slice(0,7); // YYYY-MM
+    if(!groups[key]) groups[key]=[];
+    groups[key].push({d,i});
+  });
+
+  let html='';
+  Object.keys(groups).sort().forEach(key=>{
+    const [yr,mo]=key.split('-');
+    const mName=MONTHS[parseInt(mo)-1]+' '+yr;
+    html+=`<div class="month-group">
+      <div class="month-group-header">
+        <span class="month-label">📅 ${mName} (${groups[key].length})</span>
+      </div>
+      <div class="month-days">
+        ${groups[key].map(({d,i})=>`<button class="dtab${i===activeIdx?' active':''}" onclick="switchDay(${i})">${new Date(d.date+'T00:00:00').getDate()}</button>`).join('')}
+      </div>
+    </div>`;
+  });
+  html+=`<div class="tabs-actions">
+    <button class="btn btn-red btn-sm" onclick="removeDay(${activeIdx})">✕ Remove Day</button>
+  </div>`;
+  wrap.innerHTML=html;
+}
+
+function renderPanel(){
+  const el=document.getElementById('dayContent');
+  if(!days.length){
+    el.innerHTML=`<div class="card"><div class="no-days"><h3>📋 No days added yet</h3><p>Click "Add Day" above to begin.</p></div></div>`;
+    return;
+  }
+  const idx=activeIdx, d=days[idx];
+  const open=getOpen(idx), close=getClose(idx);
+  const cr=d.credits.reduce((s,r)=>s+Number(r.amount||0),0);
+  const db=d.debits.reduce((s,r)=>s+Number(r.amount||0),0);
+  const isFirst=isApril1(d.date)&&idx===0;
+
+  el.innerHTML=`
+  ${officeLabel() || fyLabel() ? `
+  <div class="office-info-band">
+    ${officeLabel() ? `<div class="oname">${esc(officeLabel())}</div>` : ''}
+    ${fyLabel() ? `<div class="fyline">${esc(fyLabel())}</div>` : ''}
+  </div>` : ''}
+  <div class="card" style="${officeLabel()||fyLabel()?'border-radius:0 0 var(--radius) var(--radius)':''}">
+    <div class="dpanel-head">
+      <h2>📅 ${dateDisp(d.date)}</h2>
+      <div class="bal-badges">
+        <span class="bal-open" id="lv_open">ખુલ: ₹ ${fmt(open)}</span>
+        <span class="bal-close" id="lv_close">બંધ: ₹ ${fmt(close)}</span>
+      </div>
+    </div>
+    <div class="ledger">
+      ${renderCol(idx,'credits',cr,open,isFirst)}
+      ${renderCol(idx,'debits',db,close,false)}
+    </div>
+    <div class="sumbar">
+      <div class="si"><span class="lbl">ખુલ. સિલક</span><span class="val" id="sv_open" style="color:var(--green)">₹ ${fmt(open)}</span></div>
+      <div class="si"><span class="lbl">＋ આવક</span><span class="val" id="sv_cr" style="color:var(--green-mid)">₹ ${fmt(cr)}</span></div>
+      <div class="si"><span class="lbl">− જાવક</span><span class="val" id="sv_db" style="color:var(--red)">₹ ${fmt(db)}</span></div>
+      <div class="si"><span class="lbl">＝ બંધ સિલક</span><span class="val" id="sv_close" style="color:var(--amber);font-size:17px">₹ ${fmt(close)}</span></div>
+    </div>
+  </div>`;
+}
+
+function renderCol(idx,side,total,balVal,isFirstDay){
+  const d=days[idx];
+  const isCr=side==='credits';
+  const rows=d[side];
+  const open=getOpen(idx), close=getClose(idx);
+  return `
+  <div class="lcol">
+    <div class="lcol-hdr">
+      <span class="lcol-title ${isCr?'cr':'dr'}">${isCr?'📥 આવક — Credit':'📤 જાવક — Debit'}</span>
+      <button class="btn btn-${isCr?'green':'red'} btn-xs" onclick="addRow(${idx},'${side}')">＋ Row</button>
+    </div>
+    <div class="side-label ${isCr?'cr-label':'dr-label'}">
+      ${isCr ? 'જમા બાજુ &nbsp;|&nbsp; Credit Side' : 'ઉધાર બાજુ &nbsp;|&nbsp; Debit Side'}
+    </div>
+    ${isCr?`
+    <div class="open-row">
+      <span>ખુલતી સિલક</span>
+      ${isFirstDay
+        ? `<input class="amt" type="number" min="0" step="0.01" value="${Number(d.openingBalance||0).toFixed(2)}" placeholder="0.00" oninput="setOpenBalance(${idx},this.value)" title="Enter opening balance for new financial year">`
+        : `<input class="amt" readonly value="${fmt(open)}" title="Auto-calculated from previous day">`
+      }
+    </div>`:'<div style="height:40px;margin-bottom:10px"></div>'}
+    <div class="col-lbl">
+      <span>Description / વિગત</span><span>Ref No.</span><span class="r">Amount / રકમ</span><span></span>
+    </div>
+    <div class="lcol-entries">
+    ${rows.map((r,ri)=>`
+    <div class="erow">
+      <textarea class="desc-field" rows="1" placeholder="${isCr?'આવકની વિગત':'જાવકની વિગત'}" oninput="setField(${idx},'${side}',${ri},'desc',this.value);autoGrow(this)">${esc(r.desc)}</textarea>
+      <input type="text" value="${esc(r.ref)}" placeholder="Ref/ચેક" style="text-align:center" oninput="setField(${idx},'${side}',${ri},'ref',this.value)">
+      <input class="amt" type="number" min="0" step="0.01" value="${r.amount}" placeholder="0.00" oninput="setField(${idx},'${side}',${ri},'amount',this.value)">
+      <button class="rbtn" onclick="removeRow(${idx},'${side}',${ri})">×</button>
+    </div>`).join('')}
+    </div>
+    <div class="tot-row ${isCr?'tot-cr':'tot-dr'}">
+      <span>કુલ ${isCr?'આવક':'જાવક'}</span>
+      <span id="lv_tot_${side}">₹ ${fmt(total)}</span>
+    </div>
+    ${!isCr?`<div class="close-row"><span>બંધ સિલક</span><span id="lv_close2">₹ ${fmt(close)}</span></div>`:''}
+  </div>`;
+}
+
+function refreshLive(){
+  if(!days.length) return;
+  const idx=activeIdx, d=days[idx];
+  const open=getOpen(idx), cr=d.credits.reduce((s,r)=>s+Number(r.amount||0),0), db=d.debits.reduce((s,r)=>s+Number(r.amount||0),0), close=getClose(idx);
+  const s=id=>document.getElementById(id);
+  if(s('lv_open')) s('lv_open').textContent='ખુલ: ₹ '+fmt(open);
+  if(s('lv_close')) s('lv_close').textContent='બંધ: ₹ '+fmt(close);
+  if(s('lv_tot_credits')) s('lv_tot_credits').textContent='₹ '+fmt(cr);
+  if(s('lv_tot_debits')) s('lv_tot_debits').textContent='₹ '+fmt(db);
+  if(s('lv_close2')) s('lv_close2').textContent='₹ '+fmt(close);
+  if(s('sv_open')) s('sv_open').textContent='₹ '+fmt(open);
+  if(s('sv_cr')) s('sv_cr').textContent='₹ '+fmt(cr);
+  if(s('sv_db')) s('sv_db').textContent='₹ '+fmt(db);
+  if(s('sv_close')) s('sv_close').textContent='₹ '+fmt(close);
+}
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function autoGrow(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+function autoGrowAll(){ document.querySelectorAll('textarea.desc-field').forEach(autoGrow); }
+
+function render(){ renderTabs(); renderPanel(); setTimeout(autoGrowAll,10); }
+
+// ════════════════════════════════════════════════════
+//  EXCEL EXPORT — exact original format
+// ════════════════════════════════════════════════════
+function buildWorksheet(d, dayIdx, allDays){
+  function getOpenForDay(i, arr){
+    if(i===0) return isApril1(arr[0].date) ? Number(arr[0].openingBalance||0) : 0;
+    return getCloseForDay(i-1, arr);
+  }
+  function getCloseForDay(i, arr){
+    const day=arr[i];
+    return getOpenForDay(i, arr)+day.credits.reduce((s,r)=>s+Number(r.amount||0),0)-day.debits.reduce((s,r)=>s+Number(r.amount||0),0);
+  }
+
+  const open=getOpenForDay(dayIdx, allDays);
+  const credits=d.credits.filter(r=>r.desc||Number(r.amount||0)>0);
+  const debits=d.debits.filter(r=>r.desc||Number(r.amount||0)>0);
+  const totalCr=credits.reduce((s,r)=>s+Number(r.amount||0),0);
+  const totalDb=debits.reduce((s,r)=>s+Number(r.amount||0),0);
+  const close=getCloseForDay(dayIdx, allDays);
+  const dt=new Date(d.date+'T00:00:00');
+
+  const ws={};
+  const thin={style:'thin',color:{rgb:'000000'}};
+  const allBdr={top:thin,bottom:thin,left:thin,right:thin};
+  const dblBot={top:thin,bottom:{style:'double',color:{rgb:'000000'}},left:thin,right:thin};
+  const dateStr=('0'+dt.getDate()).slice(-2)+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+dt.getFullYear();
+
+  // ── Row offset: how many header rows we prepend ──
+  // R1: Office name (merged A–H)
+  // R2: FY + date (merged A–H)
+  // R3: blank spacer
+  // R4: "Credit Side" cols A-D, "Debit Side" cols E-H  ← NEW side labels
+  // R5: column headers (was row 1)
+  // R6: opening balance (was row 2)
+  // ... etc.
+  const OFFSET = 4; // we add 4 rows before the original row 1
+
+  function st(al){ return {font:{name:'Calibri',sz:11},alignment:{horizontal:al||'left',vertical:'center',wrapText:true},border:allBdr,numFmt:'General'}; }
+  const numSt={font:{name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'},border:allBdr,numFmt:'0.00'};
+  const hdrSt={font:{name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:allBdr};
+  const rAlSt={font:{name:'Calibri',sz:11},alignment:{horizontal:'right',vertical:'center'},border:allBdr,numFmt:'General'};
+  const hdBigSt={font:{name:'Calibri',sz:13,bold:true},alignment:{horizontal:'center',vertical:'center'},border:allBdr};
+  const hdMidSt={font:{name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'},border:allBdr};
+  const sideSt={font:{name:'Calibri',sz:11,bold:true},alignment:{horizontal:'center',vertical:'center'},border:allBdr};
+
+  function sc(addr,val,style){ ws[addr]={v:val,t:typeof val==='number'?'n':'s',s:style}; }
+  function scN(addr,val,style){ ws[addr]={v:val,t:'n',s:style||numSt}; }
+  function rn(r){ return r+OFFSET; } // translate original row number to new
+
+  // ── HEADER ROWS ──
+  // Row 1: Office name merged A–H
+  const oName = [settings.officeName, settings.officeNameEn].filter(Boolean).join('  |  ') || 'Government Office Daybook';
+  for(const c of ['A','B','C','D','E','F','G','H']) sc(c+'1', c==='A'?oName:'', hdBigSt);
+  ws['!merges'] = ws['!merges']||[];
+  ws['!merges'].push({s:{r:0,c:0},e:{r:0,c:7}});
+
+  // Row 2: FY + date merged A–H
+  const fy = settings.fyStart&&settings.fyEnd ? `FY ${settings.fyStart}-${settings.fyEnd}  |  નાણાંકીય વર્ષ ${settings.fyStart}-${settings.fyEnd}  |  તારીખ: ${dateStr}` : `તારીખ: ${dateStr}`;
+  for(const c of ['A','B','C','D','E','F','G','H']) sc(c+'2', c==='A'?fy:'', hdMidSt);
+  ws['!merges'].push({s:{r:1,c:0},e:{r:1,c:7}});
+
+  // Row 3: blank
+  for(const c of ['A','B','C','D','E','F','G','H']) sc(c+'3','',st('center'));
+
+  // Row 4: Side labels — Credit Side (A–D merged), Debit Side (E–H merged)
+  for(const c of ['A','B','C','D']) sc(c+'4', c==='A'?'જમા બાજુ  |  CREDIT SIDE':'', sideSt);
+  for(const c of ['E','F','G','H']) sc(c+'4', c==='E'?'ઉધાર બાજુ  |  DEBIT SIDE':'', sideSt);
+  ws['!merges'].push({s:{r:3,c:0},e:{r:3,c:3}});
+  ws['!merges'].push({s:{r:3,c:4},e:{r:3,c:7}});
+
+  // ── ORIGINAL ROWS shifted by OFFSET ──
+  const R = r => r + OFFSET; // helper: original row 1 → actual row 1+OFFSET
+
+  // ROW 1 (orig) → R(1): column headers
+  sc(`A${R(1)}`,'તારીખ',hdrSt); sc(`B${R(1)}`,'આવકની વિગત',hdrSt); sc(`C${R(1)}`,'ચેક/રેફ. નં.',hdrSt); sc(`D${R(1)}`,'કુલ રકમ',hdrSt);
+  sc(`E${R(1)}`,'તારીખ',hdrSt); sc(`F${R(1)}`,'જાવકની વિગત',hdrSt); sc(`G${R(1)}`,'ચેક/રેફ. નં.',hdrSt); sc(`H${R(1)}`,'કુલ રકમ',hdrSt);
+
+  // ROW 2: opening balance
+  sc(`A${R(2)}`,dateStr,st('center')); sc(`B${R(2)}`,'ખુલતી સિલક',st('left')); sc(`C${R(2)}`,'-',st('center')); scN(`D${R(2)}`,open);
+  sc(`E${R(2)}`,dateStr,st('center')); sc(`F${R(2)}`,'',st('left')); sc(`G${R(2)}`,'',st('center')); scN(`H${R(2)}`,0);
+
+  // ROW 3: blank
+  for(const c of ['A','B','C','D','E','F','G','H']) sc(c+R(3),'',st('center'));
+
+  // Rows 4–31 (28 data rows)
+  for(let i=0;i<28;i++){
+    const r=R(i+4);
+    const cr=credits[i], db=debits[i];
+    sc(`A${r}`, cr?dateStr:'', st('center'));
+    sc(`B${r}`, cr?toEnglishDigits(cr.desc||''):'', st('left'));
+    sc(`C${r}`, cr?toEnglishDigits(cr.ref||'-'):'', st('center'));
+    scN(`D${r}`, cr?Number(cr.amount||0):0);
+    sc(`E${r}`, db?dateStr:'', st('center'));
+    sc(`F${r}`, db?toEnglishDigits(db.desc||''):'', st('left'));
+    sc(`G${r}`, db?toEnglishDigits(db.ref||'-'):'', st('center'));
+    scN(`H${r}`, db?Number(db.amount||0):0);
+  }
+
+  // Row 32
+  sc(`A${R(32)}`,'',st('center')); sc(`B${R(32)}`,'કુલ આવક',st('left')); sc(`C${R(32)}`,'',st('center')); scN(`D${R(32)}`,totalCr);
+  sc(`E${R(32)}`,'',st('center')); sc(`F${R(32)}`,'કુલ જાવક',st('left')); sc(`G${R(32)}`,'',st('center')); scN(`H${R(32)}`,totalDb);
+
+  // Row 33: closing balance
+  for(const c of ['A','B','C','D','E']) sc(c+R(33),'',st('center'));
+  sc(`F${R(33)}`,'બંધ સિલક',st('left')); sc(`G${R(33)}`,'',st('center')); scN(`H${R(33)}`,close);
+
+  // Row 34
+  sc(`A${R(34)}`,'',st('center')); sc(`B${R(34)}`,'કુલ ખુલતી સિલક',rAlSt); sc(`C${R(34)}`,'',st('center')); scN(`D${R(34)}`,open);
+  sc(`E${R(34)}`,'',st('center')); sc(`F${R(34)}`,'કુલ બંધ સિલક',rAlSt); sc(`G${R(34)}`,'',st('center')); scN(`H${R(34)}`,close);
+
+  // Row 35 (double bottom)
+  sc(`A${R(35)}`,'',st('center')); sc(`B${R(35)}`,'કુલ આવક',rAlSt); sc(`C${R(35)}`,'',st('center'));
+  ws[`D${R(35)}`]={v:totalCr,t:'n',s:{...numSt,border:dblBot}};
+  sc(`E${R(35)}`,'',st('center')); sc(`F${R(35)}`,'કુલ જાવક',rAlSt); sc(`G${R(35)}`,'',st('center'));
+  ws[`H${R(35)}`]={v:totalDb,t:'n',s:{...numSt,border:dblBot}};
+
+  // Row 36 (no top border)
+  const noTopBdr={top:{style:null},bottom:thin,left:thin,right:thin};
+  sc(`A${R(36)}`,'',st('center')); sc(`B${R(36)}`,'કુલ',rAlSt); sc(`C${R(36)}`,'',st('center'));
+  ws[`D${R(36)}`]={v:open+totalCr,t:'n',s:{...numSt,border:noTopBdr}};
+  sc(`E${R(36)}`,'',st('center')); sc(`F${R(36)}`,'કુલ',rAlSt); sc(`G${R(36)}`,'',st('center'));
+  ws[`H${R(36)}`]={v:close+totalDb,t:'n',s:{...numSt,border:noTopBdr}};
+
+  // Column widths (same as original)
+  ws['!cols']=[{wch:11.5},{wch:42},{wch:13},{wch:15},{wch:11.5},{wch:42},{wch:13},{wch:15}];
+
+  // Row heights: first 4 header rows taller, rest 19.8pt
+  const rh=[];
+  rh.push({hpt:22}); // office name
+  rh.push({hpt:18}); // FY line
+  rh.push({hpt:8});  // spacer
+  rh.push({hpt:20}); // side labels
+  for(let i=0;i<36;i++) rh.push({hpt:19.8}); // original rows
+  ws['!rows']=rh;
+
+  ws['!ref']=`A1:H${R(36)}`;
+  ws['!printOptions']={headings:false,gridLines:false};
+  ws['!pageSetup']={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+
+  return ws;
+}
+
+function exportAllExcel(){
+  exportExcelForDays(days, 'Daybook_All_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function exportExcelForDays(daysArr, filename){
+  if(!daysArr.length){ alert('No data to export.'); return; }
+  const wb=XLSX.utils.book_new();
+  daysArr.forEach((d,i)=>{
+    const ws=buildWorksheet(d, i, daysArr);
+    const sheetName=d.date.replace(/-/g,'').slice(2); // YYMMDD
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+  // Summary sheet
+  const sumWs={};
+  const hS={font:{name:'Calibri',sz:11,bold:true},alignment:{horizontal:'center'},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}};
+  sumWs['A1']={v:'Date',t:'s',s:hS}; sumWs['B1']={v:'Opening Balance',t:'s',s:hS};
+  sumWs['C1']={v:'Total Credit',t:'s',s:hS}; sumWs['D1']={v:'Total Debit',t:'s',s:hS}; sumWs['E1']={v:'Closing Balance',t:'s',s:hS};
+  daysArr.forEach((d,i)=>{
+    const r=i+2;
+    // compute balances relative to daysArr
+    function getO(ii){ if(ii===0) return isApril1(daysArr[0].date)?Number(daysArr[0].openingBalance||0):0; return getC(ii-1); }
+    function getC(ii){ const day=daysArr[ii]; return getO(ii)+day.credits.reduce((s,e)=>s+Number(e.amount||0),0)-day.debits.reduce((s,e)=>s+Number(e.amount||0),0); }
+    const op=getO(i), cr=d.credits.reduce((s,e)=>s+Number(e.amount||0),0), db=d.debits.reduce((s,e)=>s+Number(e.amount||0),0), cl=getC(i);
+    const dt=new Date(d.date+'T00:00:00');
+    const ds=('0'+dt.getDate()).slice(-2)+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+dt.getFullYear();
+    const ns={font:{name:'Calibri',sz:11},alignment:{horizontal:'right'},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}},numFmt:'0.00'};
+    const cs={...ns,alignment:{horizontal:'center'}};
+    sumWs[`A${r}`]={v:ds,t:'s',s:cs};
+    sumWs[`B${r}`]={v:op,t:'n',s:ns}; sumWs[`C${r}`]={v:cr,t:'n',s:ns};
+    sumWs[`D${r}`]={v:db,t:'n',s:ns}; sumWs[`E${r}`]={v:cl,t:'n',s:ns};
+  });
+  sumWs['!cols']=[{wch:14},{wch:18},{wch:16},{wch:16},{wch:18}];
+  sumWs['!ref']=`A1:E${daysArr.length+1}`;
+  XLSX.utils.book_append_sheet(wb, sumWs, 'Summary');
+  XLSX.writeFile(wb, filename);
+}
+
+// ════════════════════════════════════════════════════
+//  RANGE MODAL
+// ════════════════════════════════════════════════════
+function openRangeModal(){
+  if(days.length){
+    document.getElementById('rangeFrom').value=days[0].date;
+    document.getElementById('rangeTo').value=days[days.length-1].date;
+  }
+  document.getElementById('rangeModal').classList.add('open');
+}
+function closeRangeModal(){ document.getElementById('rangeModal').classList.remove('open'); }
+
+function getRangeDays(){
+  const from=document.getElementById('rangeFrom').value;
+  const to=document.getElementById('rangeTo').value;
+  if(!from||!to){ alert('Please select both dates.'); return null; }
+  if(from>to){ alert('From date must be before To date.'); return null; }
+  // We need to keep original indices for balance continuity
+  const filtered=days.filter(d=>d.date>=from&&d.date<=to);
+  if(!filtered.length){ alert('No entries in this date range.'); return null; }
+  return {filtered, from, to};
+}
+
+function rangeExcelExport(){
+  const res=getRangeDays(); if(!res) return;
+  closeRangeModal();
+  exportExcelForDays(res.filtered, `Daybook_${res.from}_to_${res.to}.xlsx`);
+}
+
+function rangePrint(){
+  const res=getRangeDays(); if(!res) return;
+  closeRangeModal();
+  printDays(res.filtered);
+}
+
+function printDays(daysArr){
+  const oName = [settings.officeName, settings.officeNameEn].filter(Boolean).join('  |  ') || '';
+  const fy = settings.fyStart&&settings.fyEnd ? `નાણાંકીય વર્ષ / Financial Year : ${settings.fyStart}–${settings.fyEnd}` : '';
+
+  // Build page HTML for one day
+  function buildPageHtml(d, i){
+    function getO(ii){ if(ii===0) return isApril1(daysArr[0].date)?Number(daysArr[0].openingBalance||0):0; return getC(ii-1); }
+    function getC(ii){ const day=daysArr[ii]; return getO(ii)+day.credits.reduce((s,e)=>s+Number(e.amount||0),0)-day.debits.reduce((s,e)=>s+Number(e.amount||0),0); }
+    const op=getO(i), cr=d.credits.reduce((s,e)=>s+Number(e.amount||0),0), db=d.debits.reduce((s,e)=>s+Number(e.amount||0),0), cl=getC(i);
+    const dt=new Date(d.date+'T00:00:00');
+    const ds=('0'+dt.getDate()).slice(-2)+'/'+('0'+(dt.getMonth()+1)).slice(-2)+'/'+dt.getFullYear();
+    const maxRows=Math.max(d.credits.length, d.debits.length);
+
+    let dataRows='';
+    for(let j=0;j<maxRows;j++){
+      const cr2=d.credits[j], db2=d.debits[j];
+      dataRows+=`<tr>
+        <td class="c">${cr2?(cr2.desc||cr2.ref||cr2.amount?ds:''):''}</td>
+        <td class="desc-cell">${cr2?toEnglishDigits(cr2.desc||''):''}</td>
+        <td class="c">${cr2?toEnglishDigits(cr2.ref||''):''}</td>
+        <td class="amt-cell">${cr2&&cr2.amount?fmtN(Number(cr2.amount)):''}</td>
+        <td class="c mid-divider">${db2?(db2.desc||db2.ref||db2.amount?ds:''):''}</td>
+        <td class="desc-cell">${db2?toEnglishDigits(db2.desc||''):''}</td>
+        <td class="c">${db2?toEnglishDigits(db2.ref||''):''}</td>
+        <td class="amt-cell">${db2&&db2.amount?fmtN(Number(db2.amount)):''}</td>
+      </tr>`;
+    }
+
+    return `
+    <div class="page" id="page-${i}">
+      <div class="page-content-zone" id="zone-${i}">
+        <div class="page-inner" id="inner-${i}">
+        ${oName||fy ? `<div class="pg-header">
+          ${oName?`<div class="office">${oName}</div>`:''}
+          ${fy?`<div class="fydate">${fy}&nbsp;&nbsp;|&nbsp;&nbsp;તારીખ / Date : ${ds}</div>`:`<div class="fydate">તારીખ / Date : ${ds}</div>`}
+        </div>` : `<h2>📒 Daily Account — ${ds}</h2>`}
+        <table>
+          <colgroup>
+            <col class="c-date"><col class="c-desc"><col class="c-ref"><col class="c-amt">
+            <col class="c-date"><col class="c-desc"><col class="c-ref"><col class="c-amt">
+          </colgroup>
+          <tr class="side-hdr">
+            <th colspan="4" style="border-right:3px solid #fff">જમા બાજુ &nbsp;|&nbsp; CREDIT SIDE</th>
+            <th colspan="4">ઉધાર બાજુ &nbsp;|&nbsp; DEBIT SIDE</th>
+          </tr>
+          <tr>
+            <th>Date</th><th>આવકની વિગત / Description</th><th>ચેક/રેફ. નં.</th><th>કુલ રકમ (₹)</th>
+            <th class="mid-divider">Date</th><th>જાવકની વિગત / Description</th><th>ચેક/રેફ. નં.</th><th>કુલ રકમ (₹)</th>
+          </tr>
+          <tr class="open-row">
+            <td class="c">${ds}</td><td class="desc-cell">ખુલતી સિલક (Opening Balance)</td><td class="c">-</td><td class="amt-cell">${fmtN(op)}</td>
+            <td class="mid-divider" colspan="4"></td>
+          </tr>
+          ${dataRows}
+          <tr class="sum-row"><td></td><td class="desc-cell">કુલ આવક (Total Credit)</td><td></td><td class="amt-cell">${fmtN(cr)}</td><td class="mid-divider"></td><td class="desc-cell">કુલ જાવક (Total Debit)</td><td></td><td class="amt-cell">${fmtN(db)}</td></tr>
+          <tr class="close-row"><td colspan="4"></td><td class="mid-divider" colspan="2">બંધ સિલક (Closing Balance)</td><td></td><td class="amt-cell">${fmtN(cl)}</td></tr>
+          <tr class="sum-row"><td></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ ખુલ. સિ.</td><td class="amt-cell">${fmtN(op)}</td><td class="mid-divider"></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ બંધ સિ.</td><td class="amt-cell">${fmtN(cl)}</td></tr>
+          <tr class="sum-row"><td></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ આવક</td><td class="amt-cell dbl-bottom">${fmtN(cr)}</td><td class="mid-divider"></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ જાવક</td><td class="amt-cell dbl-bottom">${fmtN(db)}</td></tr>
+          <tr class="sum-row"><td></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ</td><td class="amt-cell">${fmtN(op+cr)}</td><td class="mid-divider"></td><td class="desc-cell" colspan="2" style="text-align:right">કુલ</td><td class="amt-cell">${fmtN(cl+db)}</td></tr>
+        </table>
+      </div>
+      </div>
+      <div class="pg-footer">Vibe Coded with Claude AI by Yagnesh Badheka – Head Clerk DIET Bhavnagar</div>
+    </div>`;
+  }
+
+  const pagesHtml = daysArr.map((d,i) => buildPageHtml(d,i)).join('');
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    @page{size:A4 landscape;margin:10mm 8mm 10mm 8mm}
+    *{box-sizing:border-box}
+    body{font-family:Calibri,Arial,sans-serif;font-size:10pt;margin:0;padding:0;background:#fff}
+
+    /* Each .page is exactly one A4-landscape printed page.
+       Flex column: page-inner grows to fill space, footer is always last fixed row */
+    .page{
+      width:277mm;
+      height:190mm;
+      display:flex;
+      flex-direction:column;
+      page-break-after:always;
+      page-break-inside:avoid;
+      overflow:hidden;
+      position:relative;
+    }
+    .page:last-child{page-break-after:auto}
+
+    /* Grows to fill all space above footer */
+    .page-content-zone{
+      flex:1 1 auto;
+      overflow:hidden;
+      position:relative;
+      min-height:0;
+    }
+
+    /* page-inner sits inside content-zone and gets scaled by JS */
+    .page-inner{
+      width:277mm;
+      transform-origin:top left;
+    }
+
+    /* Footer: fixed height, never overlapped */
+    .pg-footer{
+      flex:0 0 auto;
+      text-align:right;
+      font-size:7pt;
+      color:#333;
+      font-style:italic;
+      white-space:nowrap;
+      padding-top:2mm;
+      border-top:0.5px solid #bbb;
+    }
+
+    .pg-header{text-align:center;margin-bottom:4px;border:1px solid #000;overflow:hidden}
+    .pg-header .office{font-size:12pt;font-weight:bold;color:#000;padding:4px 8px;border-bottom:1px solid #000}
+    .pg-header .fydate{font-size:9pt;color:#000;padding:2px 8px}
+    h2{font-size:10pt;margin:3px 0 4px;color:#000}
+
+    table{width:100%;border-collapse:collapse;margin-bottom:3px;table-layout:fixed}
+    col.c-date{width:9%}
+    col.c-desc{width:25%}
+    col.c-ref {width:8%}
+    col.c-amt {width:8%}
+    td,th{border:1px solid #000;padding:2px 4px;font-size:9pt;word-wrap:break-word;overflow-wrap:break-word;white-space:normal}
+    th{text-align:center;background:#fff;color:#000;font-weight:bold}
+    .side-hdr th{background:#000;color:#fff;font-size:9pt;letter-spacing:.4px;font-weight:bold}
+    .r{text-align:right}.c{text-align:center}
+    .desc-cell{text-align:left;word-wrap:break-word;overflow-wrap:break-word;white-space:normal}
+    .amt-cell{text-align:right;white-space:nowrap;overflow:hidden}
+    .open-row td{font-weight:bold}
+    .close-row td{font-weight:bold}
+    .sum-row td{font-weight:bold}
+    .dbl-bottom{border-bottom:3px double #000}
+    .mid-divider{border-left:2.5px solid #000 !important}
+  </style>
+  </head>
+  <body>
+  ${pagesHtml}
+  <script>
+    // After layout is complete, measure each page-inner and scale it to fit
+    // within its .page container (which is exactly one printed page).
+    window.addEventListener('load', function(){
+      const pages = document.querySelectorAll('.page');
+      pages.forEach(function(page){
+        const zone  = page.querySelector('.page-content-zone');
+        const inner = page.querySelector('.page-inner');
+        if(!inner || !zone) return;
+        // zone is the flex child that fills all space above the footer
+        // its clientHeight is the exact pixels available for the table
+        const availH = zone.clientHeight;
+        const availW = zone.clientWidth;
+        const innerH = inner.scrollHeight;
+        const innerW = inner.scrollWidth;
+        const scaleH = availH / innerH;
+        const scaleW = availW / innerW;
+        const scale  = Math.min(scaleH, scaleW, 1);
+        inner.style.transform = 'scale(' + scale + ')';
+        inner.style.width = (100 / scale) + '%';
+      });
+      setTimeout(function(){ window.print(); }, 400);
+    });
+  </sc' + 'ript>
+  </body></html>`;
+
+  const w=window.open('','_blank','width=1200,height=900');
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function fmtN(n){ return Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function rangePdfExport(){
+  const res=getRangeDays(); if(!res) return;
+  closeRangeModal();
+  // PDF via print dialog — open print window and let browser save as PDF
+  printDays(res.filtered);
+  // Note shown to user
+  setTimeout(()=>alert('Tip: In the print dialog, choose "Save as PDF" as the printer to download a PDF.'),200);
+}
+
+// ════════════════════════════════════════════════════
+//  SAMPLE DATA
+// ════════════════════════════════════════════════════
+function loadSample(){
+  if(days.length&&!confirm('This will replace all current data. Continue?')) return;
+  days=[
+    {date:'2025-04-01',openingBalance:0,
+     credits:[{desc:'ઉદાહરણ - ૧ (Income 1)',ref:'0001',amount:'1000'},{desc:'ઉદાહરણ - ૨ (Income 2)',ref:'0002',amount:'500'}],
+     debits:[{desc:'કોઈ પ્રકારની જાવક નથી.',ref:'-',amount:'0'}]},
+    {date:'2025-04-02',openingBalance:0,
+     credits:[{desc:'કોઈ પ્રકારની આવક નથી.',ref:'-',amount:'0'}],
+     debits:[{desc:'ઉદાહરણ - ૧ (Expense 1)',ref:'0001',amount:'200'},{desc:'ઉદાહરણ - ૨ (Expense 2)',ref:'0002',amount:'300'}]}
+  ];
+  activeIdx=0; save(); render();
+}
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+document.getElementById('newDate').value=new Date().toISOString().slice(0,10);
+load();
+updateHeaderDisplay();
+render();
+</script>
+</body>
+</html>
